@@ -1,0 +1,10 @@
+# for main module
+numpy>=1.10.0
+torch>=1.1.0
+torchvision>=0.2.0
+tqdm>=4.32
+
+# For experiments
+--no-binary=h5py
+h5py>=2.9.0
+mpi4py
