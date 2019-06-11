@@ -1,6 +1,7 @@
 import torch as t
 import torch.nn as nn
 import torch.nn.functional as F
+import numpy as np
 from .kernel_patch import ConvKP, NonlinKP
 import math
 
@@ -47,7 +48,9 @@ class NNGPKernel(nn.Module):
         xx = (x**2).mean(1, keepdim=True)
         yy = (y**2).mean(1, keepdim=True)
 
-        r = NonlinKP(self.propagate(ConvKP(same, diag, xy, xx, yy))).xy.squeeze(-1).squeeze(-1)
+        initial_kp = ConvKP(same, diag, xy, xx, yy)
+        final_kp = self.propagate(initial_kp)
+        r = NonlinKP(final_kp).xy.squeeze(-1).squeeze(-1)
         if diag:
             return r.squeeze(-1)
         else:
@@ -111,14 +114,13 @@ class ReLU(NNGPKernel):
       Replace diagonal elements of kp.xy with correct values.
       To represent identical elements, use flag in kp
     """
-    iid_noise_var = 0.0001
+    iid_noise_var = 1e-5
     def propagate(self, kp):
         kp = NonlinKP(kp)
 
         xx = kp.xx + self.iid_noise_var
         yy = kp.yy + self.iid_noise_var
         xx_yy = xx*yy
-        sqrt_xx_yy = t.sqrt(xx_yy)
 
         """
         We need to calculate (xy, xx, yy == c, v₁, v₂):
@@ -130,7 +132,7 @@ class ReLU(NNGPKernel):
 
         # NOTE we divide by 2 to avoid multiplying the ReLU by sqrt(2)
         """
-        cos_theta = kp.xy/sqrt_xx_yy
+        cos_theta = kp.xy * xx_yy.rsqrt()
         sin_theta = t.sqrt(xx_yy - kp.xy**2)
         theta = t.acos(cos_theta)
         xy = (sin_theta + (math.pi - theta)*kp.xy) / (2*math.pi)
@@ -141,7 +143,7 @@ class ReLU(NNGPKernel):
                 xy = xx
             else:
                 eye = t.eye(xy.size()[0]).unsqueeze(-1).unsqueeze(-1).to(kp.xy.device)
-                xy = (1-eye)*xy + eye*xx  # avoid multiplying ReLU by sqrt(2)
+                xy = (1-eye)*xy + eye*xx
         else:
             yy = yy/2.
         return NonlinKP(kp.same, kp.diag, xy, xx, yy)

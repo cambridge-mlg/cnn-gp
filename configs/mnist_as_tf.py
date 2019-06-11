@@ -1,9 +1,13 @@
+"""
+Very similar to `./mnist.py`. In this case, however, the contents of the
+train/validation/test sets are the same as in the original paper's experiments,
+which were written in TensorFlow.
+"""
 import torchvision
-
 from cnn_gp import Conv2d, ReLU, Sequential, resnet_block
 
-train_range = range(50000)
-validation_range = range(50000, 60000)
+train_range = range(5000, 55000)
+validation_range = list(range(55000, 60000)) + list(range(0, 5000))
 test_range = range(60000, 70000)
 
 dataset_name = "MNIST"
