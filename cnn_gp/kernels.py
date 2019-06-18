@@ -114,7 +114,7 @@ class ReLU(NNGPKernel):
       Replace diagonal elements of kp.xy with correct values.
       To represent identical elements, use flag in kp
     """
-    iid_noise_var = 1e-5
+    iid_noise_var = 1e-4
     def propagate(self, kp):
         kp = NonlinKP(kp)
 
