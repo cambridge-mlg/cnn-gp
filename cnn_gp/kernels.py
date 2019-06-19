@@ -50,11 +50,11 @@ class NNGPKernel(nn.Module):
 
         initial_kp = ConvKP(same, diag, xy, xx, yy)
         final_kp = self.propagate(initial_kp)
-        r = NonlinKP(final_kp).xy.squeeze(-1).squeeze(-1)
+        r = NonlinKP(final_kp).xy
         if diag:
-            return r.squeeze(-1)
+            return r.view(N1)
         else:
-            return r
+            return r.view(N1, N2)
 
 
 class Conv2d(NNGPKernel):

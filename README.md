@@ -20,28 +20,73 @@ dense layer at the end is:
 from cnn_gp import Sequential, Conv2d, ReLU
 
 model = Sequential(
-    Conv2d(kernel_size=3),   # 26x26
+    Conv2d(kernel_size=3),
 	ReLU(),
-    Conv2d(kernel_size=3, stride=2), # 12x12
+    Conv2d(kernel_size=3, stride=2),
 	ReLU(),
-	Conv2d(kernel_size=12),
+	Conv2d(kernel_size=14, padding=0),  # equivalent to a dense layer
 )
 ```
+Optionally call `model = model.cuda()` to use the GPU.
 
-## Setup
-### Installing the package
+Then, we can compute the kernel between batches of input images:
+```python
+import torch
+# X and Z have shape [N_images, N_channels, img_width, img_height]
+X = torch.randn(2, 3, 28, 28)
+Z = torch.randn(2, 3, 28, 28)
+
+Kxx = model(X)
+Kxx = model(X, X, same=True)
+
+Kxz = model(X, Z)
+
+# diagonal of Kxx matrix above
+Kxx_diag = model(X, diag=True)
+```
+
+We can also instantiate randomly initialized neural networks that have the
+architecture corresponding to the kernel.
+```python
+network = model.nn(channels=16, in_channels=3, out_channels=10)
+isinstance(network, torch.nn.Module)  # evaluates to True
+
+f_X = network(X)  # evaluates network at X
+```
+Calling `model.nn` will give us an instance of the network above that can do 10-class
+classification. It accepts inputs that are RGB images (3 channels) of size
+28x28. We can then train this neural network as we would any normal Pytorch
+model.
+
+## Installation
 It is possible to install the `cnn_gp` package without any of the dependencies
-that are needed for the experiments. This allows you to build your own Neural netowrkJust run
+that are needed for the experiments. Just run
 ```sh
 pip install -e .
 ```
-from the root directory of this same repository
+from the root directory of this same repository.
 
-## Running the experiments
+## Current limitations
+Dense layers are not implemented. The way to simulate them is to have a
+convolutional layer with `padding=0`, and with `kernel_size` as large as the
+activations in the previous layer.
 
-First install the packages in `requirements.txt`.
+# Replicating the experiments
 
-### Accuracy of the best performing networks in the paper
+First install the packages in `requirements.txt`. To run each of the
+experiments, first take a look at the files `exp_mnist_resnet/run.bash` or
+`exp_random_nn/run.bash`. Edit the configuration variables near the top
+appropriately. Then, run one of the files from the root of the directory, for
+example:
+
+```bash
+bash ./exp_mnist_resnet/run.bash
+```
+
+## Experiment 1: classify MNIST
+
+Here are the test errors for the best GPs corresponding to the NN architectures
+reported in the paper.
 
  Name in paper | Config file | Validation error | Test error
  --------------|-------------|------------------|----------
@@ -58,19 +103,19 @@ ResNet GP | `mnist_as_tf` | 0.69% | 0.88%
 
   initial_model = Sequential(
 	  Conv2d(kernel_size=7, padding="same", var_weight=var_weight * 7**2, var_bias=var_bias),
-	  ClampingReLU(),
+	  ReLU(),
 	  Conv2d(kernel_size=7, padding="same", var_weight=var_weight * 7**2, var_bias=var_bias),
-	  ClampingReLU(),
+	  ReLU(),
 	  Conv2d(kernel_size=7, padding="same", var_weight=var_weight * 7**2, var_bias=var_bias),
-	  ClampingReLU(),
+	  ReLU(),
 	  Conv2d(kernel_size=7, padding="same", var_weight=var_weight * 7**2, var_bias=var_bias),
-	  ClampingReLU(),
+	  ReLU(),
 	  Conv2d(kernel_size=7, padding="same", var_weight=var_weight * 7**2, var_bias=var_bias),
-	  ClampingReLU(),
+	  ReLU(),
 	  Conv2d(kernel_size=7, padding="same", var_weight=var_weight * 7**2, var_bias=var_bias),
-	  ClampingReLU(),
+	  ReLU(),
 	  Conv2d(kernel_size=7, padding="same", var_weight=var_weight * 7**2, var_bias=var_bias),
-	  ClampingReLU(),  # Total 7 layers before dense
+	  ReLU(),  # Total 7 layers before dense
 
 	  Conv2d(kernel_size=28, padding=0, var_weight=var_weight, var_bias=var_bias),
   ```
@@ -87,11 +132,11 @@ ResNet GP | `mnist_as_tf` | 0.69% | 0.88%
             Sequential(
                 Conv2d(kernel_size=4, padding="same", var_weight=var_weight * 4**2,
                     var_bias=var_bias),
-                ClampingReLU(),
+                ReLU(),
             )]) for _ in range(8)),
         Conv2d(kernel_size=4, padding="same", var_weight=var_weight * 4**2,
             var_bias=var_bias),
-        ClampingReLU(),
+        ReLU(),
         Conv2d(kernel_size=28, padding=0, var_weight=var_weight,
             var_bias=var_bias),
     )
@@ -135,7 +180,7 @@ ResNet GP | `mnist_as_tf` | 0.69% | 0.88%
   ```
 </details>
 
-## BibTex citation record
+# BibTex citation record
 Note: the version in arXiv is slightly newer and contains information about
 which hyperparameters turned out to be the most effective for each architecture.
 
