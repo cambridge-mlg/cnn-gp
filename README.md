@@ -42,10 +42,15 @@ from the root directory of this same repository
 First install the packages in `requirements.txt`.
 
 ### Accuracy of the best performing networks in the paper
+
+ Name in paper | Config file | Validation error | Test error
+ --------------|-------------|------------------|----------
+ConvNet GP | `mnist_paper_convnet_gp` | 0.71% | 1.03%
+Residual CNN GP | `mnist_paper_residual_cnn_gp`
+ResNet GP | `mnist_as_tf` | 0.69% | 0.88%
+
 <details>
-  <summary>(click for details) Using `config=mnist_paper_convnet_gp`, this is the
-  "ConvNet GP" network in the paper. 0.71% validation error, 1.03% test error.
-  </summary>
+  <summary>(click to expand) Architecture for ConvNet GP</summary>
 
   ```python
   var_bias = 7.86
@@ -70,11 +75,31 @@ First install the packages in `requirements.txt`.
 	  Conv2d(kernel_size=28, padding=0, var_weight=var_weight, var_bias=var_bias),
   ```
 </details>
+<details>
+  <summary>(click to expand) Architecture for Residual CNN GP</summary>
+
+  ```python
+    var_bias = 4.69
+    var_weight = 7.27
+    initial_model = Sequential(
+        *(Sum([
+            Sequential(),
+            Sequential(
+                Conv2d(kernel_size=4, padding="same", var_weight=var_weight * 4**2,
+                    var_bias=var_bias),
+                ClampingReLU(),
+            )]) for _ in range(8)),
+        Conv2d(kernel_size=4, padding="same", var_weight=var_weight * 4**2,
+            var_bias=var_bias),
+        ClampingReLU(),
+        Conv2d(kernel_size=28, padding=0, var_weight=var_weight,
+            var_bias=var_bias),
+    )
+  ```
+</details>
 
 <details>
-  <summary>(click for details) Using `config=mnist_as_tf`, this is the
-  "ResNet GP" network in the paper corresponding to a 32-layer ResNet. 0.69% validation error, 0.88% test error.
-  </summary>
+  <summary>(click to expand) Architecture for ResNet GP</summary>
 
   ```python
   initial_model = Sequential(
