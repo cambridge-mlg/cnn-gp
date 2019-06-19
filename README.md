@@ -46,6 +46,7 @@ First install the packages in `requirements.txt`.
   <summary>(click for details) Using `config=mnist_paper_convnet_gp`, this is the
   "ConvNet GP" network in the paper. 0.71% validation error, 1.03% test error.
   </summary>
+
   ```python
   var_bias = 7.86
   var_weight = 2.79
@@ -77,10 +78,12 @@ First install the packages in `requirements.txt`.
 			var_bias=var_bias),
   ```
 </details>
+
 <details>
   <summary>(click for details) Using `config=mnist_as_tf`, this is the
   "ResNet GP" network in the paper corresponding to a 32-layer ResNet. 0.69% validation error, 0.88% test error.
   </summary>
+
   ```python
   initial_model = Sequential(
 	  Conv2d(kernel_size=3),
