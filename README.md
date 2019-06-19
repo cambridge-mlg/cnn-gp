@@ -21,10 +21,10 @@ from cnn_gp import Sequential, Conv2d, ReLU
 
 model = Sequential(
     Conv2d(kernel_size=3),
-	ReLU(),
+    ReLU(),
     Conv2d(kernel_size=3, stride=2),
-	ReLU(),
-	Conv2d(kernel_size=14, padding=0),  # equivalent to a dense layer
+    ReLU(),
+    Conv2d(kernel_size=14, padding=0),  # equivalent to a dense layer
 )
 ```
 Optionally call `model = model.cuda()` to use the GPU.
@@ -102,44 +102,44 @@ ResNet GP | `mnist_as_tf` | 0.69% | 0.88%
   var_weight = 2.79
 
   initial_model = Sequential(
-	  Conv2d(kernel_size=7, padding="same", var_weight=var_weight * 7**2, var_bias=var_bias),
-	  ReLU(),
-	  Conv2d(kernel_size=7, padding="same", var_weight=var_weight * 7**2, var_bias=var_bias),
-	  ReLU(),
-	  Conv2d(kernel_size=7, padding="same", var_weight=var_weight * 7**2, var_bias=var_bias),
-	  ReLU(),
-	  Conv2d(kernel_size=7, padding="same", var_weight=var_weight * 7**2, var_bias=var_bias),
-	  ReLU(),
-	  Conv2d(kernel_size=7, padding="same", var_weight=var_weight * 7**2, var_bias=var_bias),
-	  ReLU(),
-	  Conv2d(kernel_size=7, padding="same", var_weight=var_weight * 7**2, var_bias=var_bias),
-	  ReLU(),
-	  Conv2d(kernel_size=7, padding="same", var_weight=var_weight * 7**2, var_bias=var_bias),
-	  ReLU(),  # Total 7 layers before dense
+      Conv2d(kernel_size=7, padding="same", var_weight=var_weight * 7**2, var_bias=var_bias),
+      ReLU(),
+      Conv2d(kernel_size=7, padding="same", var_weight=var_weight * 7**2, var_bias=var_bias),
+      ReLU(),
+      Conv2d(kernel_size=7, padding="same", var_weight=var_weight * 7**2, var_bias=var_bias),
+      ReLU(),
+      Conv2d(kernel_size=7, padding="same", var_weight=var_weight * 7**2, var_bias=var_bias),
+      ReLU(),
+      Conv2d(kernel_size=7, padding="same", var_weight=var_weight * 7**2, var_bias=var_bias),
+      ReLU(),
+      Conv2d(kernel_size=7, padding="same", var_weight=var_weight * 7**2, var_bias=var_bias),
+      ReLU(),
+      Conv2d(kernel_size=7, padding="same", var_weight=var_weight * 7**2, var_bias=var_bias),
+      ReLU(),  # Total 7 layers before dense
 
-	  Conv2d(kernel_size=28, padding=0, var_weight=var_weight, var_bias=var_bias),
+      Conv2d(kernel_size=28, padding=0, var_weight=var_weight, var_bias=var_bias),
   ```
 </details>
 <details>
   <summary>(click to expand) Architecture for Residual CNN GP</summary>
 
   ```python
-    var_bias = 4.69
-    var_weight = 7.27
-    initial_model = Sequential(
-        *(Sum([
-            Sequential(),
-            Sequential(
-                Conv2d(kernel_size=4, padding="same", var_weight=var_weight * 4**2,
-                    var_bias=var_bias),
-                ReLU(),
-            )]) for _ in range(8)),
-        Conv2d(kernel_size=4, padding="same", var_weight=var_weight * 4**2,
-            var_bias=var_bias),
-        ReLU(),
-        Conv2d(kernel_size=28, padding=0, var_weight=var_weight,
-            var_bias=var_bias),
-    )
+  var_bias = 4.69
+  var_weight = 7.27
+  initial_model = Sequential(
+      *(Sum([
+          Sequential(),
+          Sequential(
+              Conv2d(kernel_size=4, padding="same", var_weight=var_weight * 4**2,
+                  var_bias=var_bias),
+              ReLU(),
+          )]) for _ in range(8)),
+      Conv2d(kernel_size=4, padding="same", var_weight=var_weight * 4**2,
+          var_bias=var_bias),
+      ReLU(),
+      Conv2d(kernel_size=28, padding=0, var_weight=var_weight,
+          var_bias=var_bias),
+  )
   ```
 </details>
 
@@ -148,34 +148,34 @@ ResNet GP | `mnist_as_tf` | 0.69% | 0.88%
 
   ```python
   initial_model = Sequential(
-	  Conv2d(kernel_size=3),
+      Conv2d(kernel_size=3),
 
-	  # Big resnet block #1
-	  resnet_block(stride=1, projection_shortcut=True,  multiplier=1),
-	  resnet_block(stride=1, projection_shortcut=False, multiplier=1),
-	  resnet_block(stride=1, projection_shortcut=False, multiplier=1),
-	  resnet_block(stride=1, projection_shortcut=False, multiplier=1),
-	  resnet_block(stride=1, projection_shortcut=False, multiplier=1),
+      # Big resnet block #1
+      resnet_block(stride=1, projection_shortcut=True,  multiplier=1),
+      resnet_block(stride=1, projection_shortcut=False, multiplier=1),
+      resnet_block(stride=1, projection_shortcut=False, multiplier=1),
+      resnet_block(stride=1, projection_shortcut=False, multiplier=1),
+      resnet_block(stride=1, projection_shortcut=False, multiplier=1),
 
-	  # Big resnet block #2
-	  resnet_block(stride=2, projection_shortcut=True,  multiplier=2),
-	  resnet_block(stride=1, projection_shortcut=False, multiplier=2),
-	  resnet_block(stride=1, projection_shortcut=False, multiplier=2),
-	  resnet_block(stride=1, projection_shortcut=False, multiplier=2),
-	  resnet_block(stride=1, projection_shortcut=False, multiplier=2),
+      # Big resnet block #2
+      resnet_block(stride=2, projection_shortcut=True,  multiplier=2),
+      resnet_block(stride=1, projection_shortcut=False, multiplier=2),
+      resnet_block(stride=1, projection_shortcut=False, multiplier=2),
+      resnet_block(stride=1, projection_shortcut=False, multiplier=2),
+      resnet_block(stride=1, projection_shortcut=False, multiplier=2),
 
-	  # Big resnet block #3
-	  resnet_block(stride=2, projection_shortcut=True,  multiplier=4),
-	  resnet_block(stride=1, projection_shortcut=False, multiplier=4),
-	  resnet_block(stride=1, projection_shortcut=False, multiplier=4),
-	  resnet_block(stride=1, projection_shortcut=False, multiplier=4),
-	  resnet_block(stride=1, projection_shortcut=False, multiplier=4),
+      # Big resnet block #3
+      resnet_block(stride=2, projection_shortcut=True,  multiplier=4),
+      resnet_block(stride=1, projection_shortcut=False, multiplier=4),
+      resnet_block(stride=1, projection_shortcut=False, multiplier=4),
+      resnet_block(stride=1, projection_shortcut=False, multiplier=4),
+      resnet_block(stride=1, projection_shortcut=False, multiplier=4),
 
-	  # No nonlinearity here, the next Conv2d substitutes the average pooling
-	  Conv2d(kernel_size=7, padding=0, in_channel_multiplier=4,
+      # No nonlinearity here, the next Conv2d substitutes the average pooling
+      Conv2d(kernel_size=7, padding=0, in_channel_multiplier=4,
              out_channel_multiplier=4),
-	  ReLU(),
-	  Conv2d(kernel_size=1, padding=0, in_channel_multiplier=4),
+      ReLU(),
+      Conv2d(kernel_size=1, padding=0, in_channel_multiplier=4),
   )
   ```
 </details>
