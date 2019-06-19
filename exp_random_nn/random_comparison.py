@@ -63,7 +63,7 @@ if __name__ == '__main__':
                     "where to save datasets")
     f.DEFINE_string("out_path", None,
                     "where to save the drawn outputs of the NN and kernel")
-    f.DEFINE_enum("config", "cifar10", ["mnist", "cifar10", "mnist_as_tf"], "which config to load from `configs`")
+    f.DEFINE_string("config", "cifar10", "which config to load from `configs`")
     f.DEFINE_integer("seed", 1, "the random seed")
     f.DEFINE_integer("channels", 30, "the number of channels of the random finite NNs")
     f.DEFINE_integer("n_samples", 10000, "Number of samples to draw from the NN")

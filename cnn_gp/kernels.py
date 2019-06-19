@@ -6,8 +6,8 @@ from .kernel_patch import ConvKP, NonlinKP
 import math
 
 
-__all__ = ("NNGPKernel", "Conv2d", "ReLU", "Sequential", "Mixture",
-           "MixtureModule", "Sum", "SumModule", "resnet_block")
+__all__ = ("NNGPKernel", "Conv2d", "ReLU", "ClampingReLU", "Sequential",
+           "Mixture", "MixtureModule", "Sum", "SumModule", "resnet_block")
 
 
 class NNGPKernel(nn.Module):
@@ -58,46 +58,67 @@ class NNGPKernel(nn.Module):
 
 
 class Conv2d(NNGPKernel):
-    def __init__(self, kernel_size, stride=1, padding="same", dilation=1, bias=None, in_channel_multiplier=1, out_channel_multiplier=1):
+    def __init__(self, kernel_size, stride=1, padding="same", dilation=1,
+                 var_weight=1., var_bias=0., in_channel_multiplier=1,
+                 out_channel_multiplier=1):
         super().__init__()
         self.kernel_size = kernel_size
         self.stride = stride
+        self.dilation = dilation
+        self.var_weight = var_weight
+        self.var_bias = var_bias
+        self.kernel_has_row_of_zeros = False
         if padding == "same":
-            assert 1 == kernel_size % 2
-            self.padding = dilation*((kernel_size-1)//2)
+            self.padding = dilation*(kernel_size//2)
+            if kernel_size % 2 == 0:
+                self.kernel_has_row_of_zeros = True
         else:
             self.padding = padding
-        self.dilation = dilation
-        self.register_buffer('kernel', t.ones(1, 1, self.kernel_size, self.kernel_size) / self.kernel_size**2)
-        self.in_channel_multiplier, self.out_channel_multiplier = in_channel_multiplier, out_channel_multiplier
+
+        if self.kernel_has_row_of_zeros:
+            # We need to pad one side larger than the other. We just make a
+            # kernel that is slightly too large and make its last column and
+            # row zeros.
+            kernel = t.ones(1, 1, self.kernel_size+1, self.kernel_size+1)
+            kernel[:, :, 0, :] = 0.
+            kernel[:, :, :, 0] = 0.
+        else:
+            kernel = t.ones(1, 1, self.kernel_size, self.kernel_size)
+        self.register_buffer('kernel', kernel
+                             * (self.var_weight / self.kernel_size**2))
+        self.in_channel_multiplier, self.out_channel_multiplier = (
+            in_channel_multiplier, out_channel_multiplier)
 
     def propagate(self, kp):
-        #Avoid decreasing the variance where there is padding.
-        #square = t.ones(1, 1, kp.W, kp.H).to(self.kernel.device)
-        #conv_square = F.conv2d(square, self.kernel, stride=self.stride, padding=self.padding, dilation=self.dilation)#.mean()
         kp = ConvKP(kp)
-        xy = F.conv2d(kp.xy, self.kernel, stride=self.stride, padding=self.padding, dilation=self.dilation) #/ conv_square
-        xx = F.conv2d(kp.xx, self.kernel, stride=self.stride, padding=self.padding, dilation=self.dilation) #/ conv_square
-        yy = F.conv2d(kp.yy, self.kernel, stride=self.stride, padding=self.padding, dilation=self.dilation) #/ conv_square
-        return ConvKP(kp.same, kp.diag, xy, xx, yy)
+        def f(patch):
+            return (F.conv2d(patch, self.kernel, stride=self.stride,
+                             padding=self.padding, dilation=self.dilation)
+                    + self.var_bias)
+        return ConvKP(kp.same, kp.diag, f(kp.xy), f(kp.xx), f(kp.yy))
 
     def nn(self, channels, in_channels=None, out_channels=None):
-
         if in_channels is None:
             in_channels = channels
         if out_channels is None:
             out_channels = channels
-        #return Conv2dModule(self, channels, in_channels=in_channels, out_channels=out_channels)
         conv2d = nn.Conv2d(
-            in_channels = in_channels * self.in_channel_multiplier,
-            out_channels = out_channels * self.out_channel_multiplier,
-            kernel_size = self.kernel_size,
-            stride = self.stride,
+            in_channels=in_channels * self.in_channel_multiplier,
+            out_channels=out_channels * self.out_channel_multiplier,
+            kernel_size=self.kernel_size + (
+                1 if self.kernel_has_row_of_zeros else 0),
+            stride=self.stride,
             padding=self.padding,
-            dilation = self.dilation,
-            bias=False
+            dilation=self.dilation,
+            bias=(self.var_bias > 0.),
         )
-        conv2d.weight.data.normal_(0, 1/self.kernel_size/math.sqrt(conv2d.in_channels))
+        conv2d.weight.data.normal_(0, math.sqrt(
+            self.var_weight / conv2d.in_channels) / self.kernel_size)
+        if self.kernel_has_row_of_zeros:
+            conv2d.weight.data[:, :, 0, :] = 0
+            conv2d.weight.data[:, :, :, 0] = 0
+        if self.var_bias > 0.:
+            conv2d.bias.data.normal_(0, math.sqrt(self.var_bias))
         return conv2d
 
     def layers(self):
@@ -153,13 +174,41 @@ class ReLU(NNGPKernel):
         assert out_channels is None
         return nn.ReLU()
         # return ReLUModule(self.iid_noise_var)
+
     def layers(self):
         return 0
+
+
+class ClampingReLU(ReLU):
+    """
+    A ReLU nonlinearity, but the covariance is stabilised by clamping values
+    instead of adding iid noise.
+    """
+    def propagate(self, kp):
+        kp = NonlinKP(kp)
+        xx_yy = kp.xx * kp.yy
+        cos_theta = (kp.xy * xx_yy.rsqrt()).clamp(-1, 1)
+        sin_theta = t.sqrt((xx_yy - kp.xy**2).clamp(min=0))
+        theta = t.acos(cos_theta)
+        xy = (sin_theta + (math.pi - theta)*kp.xy) / (2*math.pi)
+        xx = kp.xx/2.
+        if kp.same:
+            yy = xx
+            if kp.diag:
+                xy = xx
+            else:
+                eye = t.eye(xy.size()[0]).unsqueeze(-1).unsqueeze(-1).to(kp.xy.device)
+                xy = (1-eye)*xy + eye*xx
+        else:
+            yy = kp.yy/2.
+        return NonlinKP(kp.same, kp.diag, xy, xx, yy)
+
 
 class ReLUModule(nn.Module):
     def __init__(self, iid_noise_var):
         super().__init__()
         self.iid_noise_var = iid_noise_var
+
     def forward(self, input):
         # do not do the noise
         # +math.sqrt(self.iid_noise_var)*t.rand(input.size(), device=input.device))

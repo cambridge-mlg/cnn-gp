@@ -43,8 +43,7 @@ if __name__ == '__main__':
     f.DEFINE_integer('batch_size', 200,
                      "max number of examples to simultaneously compute "
                      "the kernel of")
-    f.DEFINE_enum("config", "mnist", ["mnist", "cifar10", "mnist_as_tf"],
-                  "which config to load from `configs`")
+    f.DEFINE_string("config", "mnist", "which config to load from `configs`")
     f.DEFINE_integer("n_workers", 1, "num of workers")
     f.DEFINE_integer("worker_rank", 0, "rank of worker")
     f.DEFINE_string('out_path', None, "path of h5 file to save kernels in")

@@ -13,8 +13,9 @@ setup(name='cnn_gp',
       url="http://github.com/cambridge-mlg/cnn-gp-pytorch",
       ext_modules=[],
       packages=["cnn_gp"],
-      install_requires=[
-          'numpy>=1.10.0',
-          'torch>=1.1.0'
-          'torchvision>=0.2.0',
-          'tqdm>=4.32'])
+      install_requires="""
+          numpy>=1.10.0
+          torch>=1.1.0
+          torchvision>=0.2.0
+          tqdm>=4.32
+      """.split())

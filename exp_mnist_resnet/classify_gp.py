@@ -23,7 +23,7 @@ def solve_system(Kxx, Y):
     """
     A = scipy.linalg.solve(
         Kxx.numpy(), Y.numpy(), overwrite_a=True, overwrite_b=False,
-        check_finite=False, assume_a='pos')
+        check_finite=False, assume_a='pos', lower=False)
     return torch.from_numpy(A)
 
 
@@ -95,7 +95,7 @@ if __name__ == '__main__':
     f = absl.app.flags
     f.DEFINE_string("datasets_path", "/scratch/ag919/datasets/",
                     "where to save datasets")
-    f.DEFINE_enum("config", "mnist", ["mnist", "mnist_as_tf", "cifar10"], "which config to load from `configs`")
+    f.DEFINE_string("config", "mnist", "which config to load from `configs`")
     f.DEFINE_string('in_path', "/scratch/ag919/grams_pytorch/mnist/dest.h5",
                     "path of h5 file to load kernels from")
     f.DEFINE_float("jitter", 0.0, "add to the diagonal")

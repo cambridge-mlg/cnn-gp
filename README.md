@@ -52,30 +52,22 @@ First install the packages in `requirements.txt`.
   var_weight = 2.79
 
   initial_model = Sequential(
-	  Conv2d(kernel_size=7, padding="same", var_weight=var_weight * 7**2,
-			  var_bias=var_bias),
+	  Conv2d(kernel_size=7, padding="same", var_weight=var_weight * 7**2, var_bias=var_bias),
 	  ClampingReLU(),
-	  Conv2d(kernel_size=7, padding="same", var_weight=var_weight * 7**2,
-			  var_bias=var_bias),
+	  Conv2d(kernel_size=7, padding="same", var_weight=var_weight * 7**2, var_bias=var_bias),
 	  ClampingReLU(),
-	  Conv2d(kernel_size=7, padding="same", var_weight=var_weight * 7**2,
-			  var_bias=var_bias),
+	  Conv2d(kernel_size=7, padding="same", var_weight=var_weight * 7**2, var_bias=var_bias),
 	  ClampingReLU(),
-	  Conv2d(kernel_size=7, padding="same", var_weight=var_weight * 7**2,
-			  var_bias=var_bias),
+	  Conv2d(kernel_size=7, padding="same", var_weight=var_weight * 7**2, var_bias=var_bias),
 	  ClampingReLU(),
-	  Conv2d(kernel_size=7, padding="same", var_weight=var_weight * 7**2,
-			  var_bias=var_bias),
+	  Conv2d(kernel_size=7, padding="same", var_weight=var_weight * 7**2, var_bias=var_bias),
 	  ClampingReLU(),
-	  Conv2d(kernel_size=7, padding="same", var_weight=var_weight * 7**2,
-			  var_bias=var_bias),
+	  Conv2d(kernel_size=7, padding="same", var_weight=var_weight * 7**2, var_bias=var_bias),
 	  ClampingReLU(),
-	  Conv2d(kernel_size=7, padding="same", var_weight=var_weight * 7**2,
-			  var_bias=var_bias),
-	  ClampingReLU(),  # Total 7 layers
+	  Conv2d(kernel_size=7, padding="same", var_weight=var_weight * 7**2, var_bias=var_bias),
+	  ClampingReLU(),  # Total 7 layers before dense
 
-	  Conv2d(kernel_size=28, padding=0, var_weight=var_weight,
-			var_bias=var_bias),
+	  Conv2d(kernel_size=28, padding=0, var_weight=var_weight, var_bias=var_bias),
   ```
 </details>
 
@@ -111,7 +103,7 @@ First install the packages in `requirements.txt`.
 
 	  # No nonlinearity here, the next Conv2d substitutes the average pooling
 	  Conv2d(kernel_size=7, padding=0, in_channel_multiplier=4,
-			out_channel_multiplier=4),
+             out_channel_multiplier=4),
 	  ReLU(),
 	  Conv2d(kernel_size=1, padding=0, in_channel_multiplier=4),
   )
