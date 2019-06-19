@@ -6,8 +6,8 @@ from .kernel_patch import ConvKP, NonlinKP
 import math
 
 
-__all__ = ("NNGPKernel", "Conv2d", "ReLU", "ClampingReLU", "Sequential",
-           "Mixture", "MixtureModule", "Sum", "SumModule", "resnet_block")
+__all__ = ("NNGPKernel", "Conv2d", "ReLU", "Sequential", "Mixture",
+           "MixtureModule", "Sum", "SumModule", "resnet_block")
 
 
 class NNGPKernel(nn.Module):
@@ -127,22 +127,11 @@ class Conv2d(NNGPKernel):
 
 class ReLU(NNGPKernel):
     """
-    Strategy for improving numerical stability:
-      Add IID noise
-      Raises the problem of what to do with the diagonal of the covariance for identical elements.
-      Strategy: add noise to kp.xx and kp.yy, but not kp.xy
-      Run through usual computation: everything stays finite
-      Replace diagonal elements of kp.xy with correct values.
-      To represent identical elements, use flag in kp
+    A ReLU nonlinearity, the covariance is numerically stabilised by clamping
+    values.
     """
-    iid_noise_var = 1e-4
     def propagate(self, kp):
         kp = NonlinKP(kp)
-
-        xx = kp.xx + self.iid_noise_var
-        yy = kp.yy + self.iid_noise_var
-        xx_yy = xx*yy
-
         """
         We need to calculate (xy, xx, yy == c, v₁, v₂):
                       ⏤⏤⏤⏤⏤⏤⏤⏤⏤⏤⏤⏤⏤⏤⏤⏤⏤⏤
@@ -153,66 +142,34 @@ class ReLU(NNGPKernel):
 
         # NOTE we divide by 2 to avoid multiplying the ReLU by sqrt(2)
         """
-        cos_theta = kp.xy * xx_yy.rsqrt()
-        sin_theta = t.sqrt(xx_yy - kp.xy**2)
-        theta = t.acos(cos_theta)
-        xy = (sin_theta + (math.pi - theta)*kp.xy) / (2*math.pi)
-        xx = xx/2.
-        if kp.same:
-            yy = xx
-            if kp.diag:
-                xy = xx
-            else:
-                eye = t.eye(xy.size()[0]).unsqueeze(-1).unsqueeze(-1).to(kp.xy.device)
-                xy = (1-eye)*xy + eye*xx
-        else:
-            yy = yy/2.
-        return NonlinKP(kp.same, kp.diag, xy, xx, yy)
-
-    def nn(self, channels, in_channels=None, out_channels=None):
-        assert in_channels is None
-        assert out_channels is None
-        return nn.ReLU()
-        # return ReLUModule(self.iid_noise_var)
-
-    def layers(self):
-        return 0
-
-
-class ClampingReLU(ReLU):
-    """
-    A ReLU nonlinearity, but the covariance is stabilised by clamping values
-    instead of adding iid noise.
-    """
-    def propagate(self, kp):
-        kp = NonlinKP(kp)
         xx_yy = kp.xx * kp.yy
+
+        # Clamp these so the outputs are not NaN
         cos_theta = (kp.xy * xx_yy.rsqrt()).clamp(-1, 1)
         sin_theta = t.sqrt((xx_yy - kp.xy**2).clamp(min=0))
         theta = t.acos(cos_theta)
         xy = (sin_theta + (math.pi - theta)*kp.xy) / (2*math.pi)
+
         xx = kp.xx/2.
         if kp.same:
             yy = xx
             if kp.diag:
                 xy = xx
             else:
+                # Make sure the diagonal agrees with `xx`
                 eye = t.eye(xy.size()[0]).unsqueeze(-1).unsqueeze(-1).to(kp.xy.device)
                 xy = (1-eye)*xy + eye*xx
         else:
             yy = kp.yy/2.
         return NonlinKP(kp.same, kp.diag, xy, xx, yy)
 
+    def nn(self, channels, in_channels=None, out_channels=None):
+        assert in_channels is None
+        assert out_channels is None
+        return nn.ReLU()
 
-class ReLUModule(nn.Module):
-    def __init__(self, iid_noise_var):
-        super().__init__()
-        self.iid_noise_var = iid_noise_var
-
-    def forward(self, input):
-        # do not do the noise
-        # +math.sqrt(self.iid_noise_var)*t.rand(input.size(), device=input.device))
-        return F.relu(input)
+    def layers(self):
+        return 0
 
 
 #### Combination classes

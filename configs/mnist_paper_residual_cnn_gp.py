@@ -1,5 +1,5 @@
 import torchvision
-from cnn_gp import Conv2d, ClampingReLU, Sequential, Sum
+from cnn_gp import Conv2d, ReLU, Sequential, Sum
 
 train_range = range(5000, 55000)
 validation_range = list(range(55000, 60000)) + list(range(0, 5000))
@@ -21,11 +21,11 @@ initial_model = Sequential(
         Sequential(
             Conv2d(kernel_size=4, padding="same", var_weight=var_weight * 4**2,
                    var_bias=var_bias),
-            ClampingReLU(),
+            ReLU(),
         )]) for _ in range(8)),
     Conv2d(kernel_size=4, padding="same", var_weight=var_weight * 4**2,
            var_bias=var_bias),
-    ClampingReLU(),
+    ReLU(),
     Conv2d(kernel_size=28, padding=0, var_weight=var_weight,
            var_bias=var_bias),
 )
