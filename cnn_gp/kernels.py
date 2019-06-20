@@ -130,6 +130,7 @@ class ReLU(NNGPKernel):
     A ReLU nonlinearity, the covariance is numerically stabilised by clamping
     values.
     """
+    f32_tiny = np.finfo(np.float32).tiny
     def propagate(self, kp):
         kp = NonlinKP(kp)
         """
@@ -142,7 +143,7 @@ class ReLU(NNGPKernel):
 
         # NOTE we divide by 2 to avoid multiplying the ReLU by sqrt(2)
         """
-        xx_yy = kp.xx * kp.yy
+        xx_yy = kp.xx * kp.yy + self.f32_tiny
 
         # Clamp these so the outputs are not NaN
         cos_theta = (kp.xy * xx_yy.rsqrt()).clamp(-1, 1)

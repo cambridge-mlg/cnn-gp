@@ -1,3 +1,17 @@
+"""
+The best randomly-searched ResNet reported in the paper.
+
+In the original paper there is a bug. This network sums together layers after
+the ReLU nonlinearity, which are not Gaussian, and also do not have mean 0. As
+a result, the overall network does not converge to a Gaussian process. The
+defined kernel is still valid, even if it doesn't correspond to a NN.
+
+In the interest of making the results replicable, we have replicated this bug
+as well.
+
+The correct way to use ResNets is to sum things after a Conv2d layer, see for
+example the `resnet_block` in `cnn_gp/kernels.py`.
+"""
 import torchvision
 from cnn_gp import Conv2d, ReLU, Sequential, Sum
 

@@ -91,7 +91,7 @@ reported in the paper.
  Name in paper | Config file | Validation error | Test error
  --------------|-------------|------------------|----------
 ConvNet GP | `mnist_paper_convnet_gp` | 0.71% | 1.03%
-Residual CNN GP | `mnist_paper_residual_cnn_gp`
+Residual CNN GP | `mnist_paper_residual_cnn_gp` | 0.72% | 0.96%
 ResNet GP | `mnist_as_tf` | 0.69% | 0.88%
 
 <details>
@@ -179,6 +179,31 @@ ResNet GP | `mnist_as_tf` | 0.69% | 0.88%
   )
   ```
 </details>
+
+## Experiment 2: Check that networks converge to a Gaussian process
+In the paper, only ResNet-32 GP is presented. This is why a bug when
+constructing the Residual CNN GP was originally not caught. More details in the
+relevant subsection.
+### ResNet-32 GP
+![Resnet-32 GP](/exp_random_nn/mnist_as_tf/figure.png)
+### ConvNet GP
+![Resnet-32 GP](/exp_random_nn/mnist_paper_convnet_gp/figure.png)
+### Residual CNN GP
+The best randomly-searched ResNet reported in the paper.
+
+In the original paper there is a bug. This network sums together layers after
+the ReLU nonlinearity, which are not Gaussian, and also do not have mean 0. As
+a result, the overall network does not converge to a Gaussian process. The
+defined kernel is still valid, even if it doesn't correspond to a NN.
+
+In the interest of making the results replicable, we have replicated this bug
+as well.
+
+The correct way to use ResNets is to sum things after a Conv2d layer, see for
+example the `resnet_block` in [`cnn_gp/kernels.py`](/cnn_gp/kernels.py).
+
+![Resnet-32 GP](/exp_random_nn/mnist_paper_residual_cnn_gp/figure.png)
+
 
 # BibTex citation record
 Note: the version in arXiv is slightly newer and contains information about

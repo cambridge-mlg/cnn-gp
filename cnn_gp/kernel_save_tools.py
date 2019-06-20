@@ -47,7 +47,12 @@ def save_K(f, kern, name, X, X2, diag, batch_size, worker_rank=0, n_workers=1,
                        print_interval=print_interval)
 
     for same, (i, (x, _y)), (j, (x2, _y2)) in it:
+        k = kern(x, x2, same, diag)
+        if np.any(np.isinf(k)) or np.any(np.isnan(k)):
+            print(f"About to write a nan or inf for {i},{j}")
+            import ipdb; ipdb.set_trace()
+
         if diag:
-            out[0, i:i+len(x)] = kern(x, x2, same, diag)
+            out[0, i:i+len(x)] = k
         else:
-            out[0, i:i+len(x), j:j+len(x2)] = kern(x, x2, same, diag)
+            out[0, i:i+len(x), j:j+len(x2)] = k

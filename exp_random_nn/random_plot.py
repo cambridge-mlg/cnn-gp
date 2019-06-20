@@ -127,23 +127,25 @@ for i in range(4):
         ax.set_ylabel('sampled q.')
         set_ylabel_coords(ax)
 
-lim = 2
 for i in range(4):
     ax=fig.add_axes(rect(2, i))
     df = pd.read_csv(cov_filenames[i])
 
     est = np.array(df.est)
     true = np.array(df.true)
+    hi_lim = int(1.1 * np.max([est, true]))
+    order = 10**(len(str(hi_lim))-1)
+    lims = (0, ((hi_lim+order-1)//order) * order)
 
-    ax.plot([0, lim], [0, lim], color='tab:orange', linewidth=1)
+    ax.plot(lims, lims, color='tab:orange', linewidth=1)
     ax.scatter(true, est, 0.3, color='tab:blue')
     ax.spines['right'].set_visible(False)
     ax.spines['top'].set_visible(False)
     ax.set_xlabel('limiting cov.')
-    ax.set_xlim(0, 1, lim)
-    ax.set_ylim(0, 1, lim)
-    ax.set_xticks([0, 1, lim])
-    ax.set_yticks([0, 1, lim])
+    ax.set_xlim(*lims)
+    ax.set_ylim(*lims)
+    ax.set_xticks(np.linspace(*lims, 3))
+    ax.set_yticks(np.linspace(*lims, 3))
     if i == 0:
         label(ax, 'C')
         ax.set_ylabel('sampled cov.')

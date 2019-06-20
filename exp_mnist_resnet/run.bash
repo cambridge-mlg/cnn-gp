@@ -3,7 +3,7 @@
 CUDA_VISIBLE_DEVICES="0,1"
 datasets_path="/scratch/ag919/datasets/"
 out_path="/scratch/ag919/grams_pytorch/mnist_test3"
-config="mnist"
+config="mnist_as_tf"
 batch_size=200
 
 if [ -d "$out_path" ]; then
