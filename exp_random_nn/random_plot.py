@@ -151,4 +151,4 @@ for i in range(4):
         ax.set_ylabel('sampled cov.')
         set_ylabel_coords(ax, yshift=-0.05)
 
-fig.savefig(output_filename)
+fig.savefig(output_filename, dpi=400)

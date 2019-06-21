@@ -92,7 +92,7 @@ reported in the paper.
  --------------|-------------|------------------|----------
 ConvNet GP | `mnist_paper_convnet_gp` | 0.71% | 1.03%
 Residual CNN GP | `mnist_paper_residual_cnn_gp` | 0.72% | 0.96%
-ResNet GP | `mnist_as_tf` | 0.69% | 0.88%
+ResNet GP | `mnist_as_tf` | 0.68% | 0.84%
 
 <details>
   <summary>(click to expand) Architecture for ConvNet GP</summary>

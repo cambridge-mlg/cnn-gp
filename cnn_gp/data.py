@@ -168,7 +168,7 @@ def _hhmmss(s):
     if h == 0.0:
         return f"{m:02d}:{s:02d}"
     else:
-        return f"{m:02d}:{m:02d}:{s:02d}"
+        return f"{h:02d}:{m:02d}:{s:02d}"
 
 
 def print_timings(iterator, desc="time", print_interval=2.):
