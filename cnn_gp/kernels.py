@@ -1,13 +1,15 @@
 import torch as t
+import torch.utils.dlpack as dlpack
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 from .kernel_patch import ConvKP, NonlinKP
+import cupy
 import math
 
 
 __all__ = ("NNGPKernel", "Conv2d", "ReLU", "Sequential", "Mixture",
-           "MixtureModule", "Sum", "SumModule", "resnet_block")
+           "MixtureModule", "Sum", "SumModule", "resnet_block", "FastReLU")
 
 
 class NNGPKernel(nn.Module):
@@ -133,16 +135,7 @@ class ReLU(NNGPKernel):
     f32_tiny = np.finfo(np.float32).tiny
     def propagate(self, kp):
         kp = NonlinKP(kp)
-        """
-        We need to calculate (xy, xx, yy == c, v₁, v₂):
-                      ⏤⏤⏤⏤⏤⏤⏤⏤⏤⏤⏤⏤⏤⏤⏤⏤⏤⏤
-        √(v₁v₂) / 2π ⎷1 - c²/v₁v₂ + (π - θ)c / √(v₁v₂)
 
-        which is equivalent to:
-        1/2π ( √(v₁v₂ - c²) + (π - θ)c )
-
-        # NOTE we divide by 2 to avoid multiplying the ReLU by sqrt(2)
-        """
         xx_yy = kp.xx * kp.yy + self.f32_tiny
 
         # Clamp these so the outputs are not NaN
@@ -171,6 +164,62 @@ class ReLU(NNGPKernel):
 
     def layers(self):
         return 0
+
+
+class FastReLU(ReLU):
+    """
+    We need to calculate (xy, xx, yy == c, v₁, v₂):
+                    ⏤⏤⏤⏤⏤⏤⏤⏤⏤⏤⏤⏤⏤⏤⏤⏤⏤⏤
+    √(v₁v₂) / 2π ⎷1 - c²/v₁v₂ + (π - θ)c / √(v₁v₂)
+
+    which is equivalent to:
+    1/2π ( √(v₁v₂ - c²) + (π - θ)c )
+
+    # NOTE we divide by 2 to avoid multiplying the ReLU by sqrt(2)
+
+    1.175e-38 is float32.tiny
+    """
+    source = r"""
+    float xx_yy = xx*yy;  //  + 1.1754944e-38f;
+    float cos_theta = max(min(xy * rsqrtf(xx_yy), 1.0f), -1.0f);
+    float sin_theta = max(sqrtf(xx_yy - xy*xy), 0.0f);
+    out_xy = (sin_theta + (3.141592654f - acosf(cos_theta))*xy) / 6.283185308f;
+    """
+    # TODO implement the derivative 
+    derivative = r"""
+    grad_xy = 1.5707963267948966f * asinf(max(min(xy * rsqrtf(xx*yy + 1.1754944e-38f), 1.0f), -1.0f)) + 2.4674011002723395f;
+    grad_xx = pi * sqrtf(xx_yy - xy*xy) / 4*xx
+    grad_yy = pi * sqrtf(xx_yy - xy*xy) / 4*yy
+    """
+    dtype = "float32"
+
+    def __init__(self):
+        super().__init__()
+        dt = self.dtype
+        self.cupy_propagate = cupy.ElementwiseKernel(
+            f"{dt} xy, {dt} xx, {dt} yy",
+            f"{dt} out_xy",
+            self.source,
+            name='ReLU',
+        )
+
+    def propagate(self, kp):
+        kp = NonlinKP(kp)
+
+        xx = kp.xx/2.
+        if kp.same:
+            yy = xx
+        else:
+            yy = kp.yy/2
+
+        if kp.same and kp.diag:
+            xy = xx
+        else:
+            c_xy, c_xx, c_yy = map(cupy.fromDlpack, map(
+                dlpack.to_dlpack, (kp.xy, kp.xx, kp.yy)))
+            c_out_xy = self.cupy_propagate(c_xy, c_xx, c_yy)
+            xy = dlpack.from_dlpack(c_out_xy.toDlpack())
+        return NonlinKP(kp.same, kp.diag, xy, xx, yy)
 
 
 #### Combination classes
