@@ -4,7 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 from .kernel_patch import ConvKP, NonlinKP
-import cupy
+# import cupy
 import math
 
 
@@ -151,7 +151,7 @@ class ReLU(NNGPKernel):
                 xy = xx
             else:
                 # Make sure the diagonal agrees with `xx`
-                eye = t.eye(xy.size()[0]).unsqueeze(-1).unsqueeze(-1).to(kp.xy.device)
+                eye = t.eye(xy.size()[0]).unsqueeze(-1).unsqueeze(-1).to(kp.xy)
                 xy = (1-eye)*xy + eye*xx
         else:
             yy = kp.yy/2.

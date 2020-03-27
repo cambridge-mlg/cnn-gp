@@ -3,6 +3,7 @@ from torch.utils.data import ConcatDataset, DataLoader, Subset
 import os
 import numpy as np
 import itertools
+import torch
 
 __all__ = ('DatasetFromConfig', 'ProductIterator', 'DiagIterator',
            'print_timings')
@@ -13,7 +14,7 @@ def _this_worker_batch(N_batches, worker_rank, n_workers):
     batches_per_worker[:] = N_batches // n_workers
     batches_per_worker[:N_batches % n_workers] += 1
 
-    start_batch = np.sum(batches_per_worker[:worker_rank])
+    start_batch = worker_rank
     batches_this_worker = batches_per_worker[worker_rank]
 
     return int(start_batch), int(batches_this_worker)
@@ -21,12 +22,11 @@ def _this_worker_batch(N_batches, worker_rank, n_workers):
 
 def _product_generator(N_batches_X, N_batches_X2, same):
     for i in range(N_batches_X):
-        if same:
-            # Yield only upper triangle
-            yield (True, i, i)
-        for j in range(i+1 if same else 0,
-                       N_batches_X2):
+        # Yield only lower triangle if same
+        for j in range(i if same else N_batches_X2):
             yield (False, i, j)
+        if same:
+            yield (True, i, i)
 
 
 def _round_up_div(a, b):
@@ -56,18 +56,15 @@ class ProductIterator(object):
 
         self.idx_iter = itertools.islice(
             _product_generator(N_batches_X, N_batches_X2, same),
-            start_batch,
-            start_batch + self.batches_this_worker)
+            start_batch, None, n_workers)
 
-        self.worker_rank = worker_rank
-        self.prev_j = -2  # this + 1 = -1, which is not a valid j
-        self.X_loader = None
-        self.X2_loader = None
-        self.x_batch = None
+        self.n_workers = n_workers
         self.X = X
         self.X2 = X2
         self.same = same
         self.batch_size = batch_size
+        self.X_loader = None
+        self.prev_i = None
 
     def __len__(self):
         return self.batches_this_worker
@@ -75,21 +72,30 @@ class ProductIterator(object):
     def __iter__(self):
         return self
 
-    def dataloader_beginning_at(self, i, dataset):
-        return iter(DataLoader(
-            Subset(dataset, range(i*self.batch_size, len(dataset))),
-            batch_size=self.batch_size))
+    def dataloader_beginning_at(self, i, dataset, step_mult=None):
+        B = self.batch_size
+        if step_mult is None:
+            idx = range(i*B, len(dataset), 1)
+        else:
+            idx = torch.cat([
+                torch.arange(j, min(j+B, len(dataset)), device='cpu')
+                for j in range(i*B, len(dataset), B*step_mult)
+            ])
+        return iter(DataLoader(Subset(dataset, idx), batch_size=self.batch_size))
 
     def __next__(self):
         same, i, j = next(self.idx_iter)
 
         if self.X_loader is None:
-            self.X_loader = self.dataloader_beginning_at(i, self.X)
+            self.X_loader = self.dataloader_beginning_at(i, self.X, None)
+            self.prev_i = i-1
 
-        if j != self.prev_j+1:
-            self.X2_loader = self.dataloader_beginning_at(j, self.X2)
+        if i != self.prev_i:
+            self.X2_loader = self.dataloader_beginning_at(j, self.X2, self.n_workers)
+
+        while i != self.prev_i:
             self.x_batch = next(self.X_loader)
-        self.prev_j = j
+            self.prev_i += 1
 
         return (same,
                 (i*self.batch_size, self.x_batch),
@@ -188,9 +194,9 @@ def print_timings(iterator, desc="time", print_interval=2.):
         yield value
         cur_time = time.perf_counter()
         elapsed = cur_time - start_time
-        it_s = (i+1)/elapsed
-        total_s = total/it_s
         if elapsed > last_printed + print_interval:
+            it_s = (i+1)/elapsed
+            total_s = total/it_s
             print(f"{desc}: {i+1}/{total} it, {it_s:.02f} it/s,"
                   f"[{_hhmmss(elapsed)}<{_hhmmss(total_s)}]")
             last_printed = elapsed
