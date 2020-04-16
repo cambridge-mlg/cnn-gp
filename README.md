@@ -204,9 +204,6 @@ as well.
 The correct way to use ResNets is to sum things after a Conv2d layer, see for
 example the `resnet_block` in [`cnn_gp/kernels.py`](/cnn_gp/kernels.py).
 
-![Resnet-32 GP](/exp_random_nn/mnist_paper_residual_cnn_gp/figure.png)
-
-
 # BibTex citation record
 Note: the version in arXiv is slightly newer and contains information about
 which hyperparameters turned out to be the most effective for each architecture.
