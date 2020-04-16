@@ -181,7 +181,7 @@ ResNet GP | `mnist_as_tf` | 0.68% | 0.84%
 </details>
 
 ## Experiment 2: Check that networks converge to a Gaussian process
-In the paper, only ResNet-32 GP is presented. This is why a bug when
+In the paper, only ResNet-32 GP is presented. This is why an issue when
 constructing the Residual CNN GP was originally not caught. More details in the
 relevant subsection.
 ### ResNet-32 GP
@@ -191,12 +191,14 @@ relevant subsection.
 ### Residual CNN GP
 The best randomly-searched ResNet reported in the paper.
 
-In the original paper there is a bug. This network sums together layers after
-the ReLU nonlinearity, which are not Gaussian, and also do not have mean 0. As
-a result, the overall network does not converge to a Gaussian process. The
-defined kernel is still valid, even if it doesn't correspond to a NN.
-
-In the interest of making the results replicable, we have replicated this bug
+In the original paper there is slight issue with how the kernels relate to the
+underlying networks.  The network sums together layers after the ReLU nonlinearity,
+which are not Gaussian, and also do not have mean 0. However, the kernel is valid
+and does correspond to a neural network.  In particular, if we take an infinite
+1x1 convolution, after each relu layer, 
+we convert the output of the ReLU's into a zero-mean Gaussian,
+with the same kernel, which can be summed.
+In the interest of making the results replicable, we have replicated this issue
 as well.
 
 The correct way to use ResNets is to sum things after a Conv2d layer, see for
